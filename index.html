@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>Chat Application</title>
+    <!-- JS scripts   -->
+    <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+    <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="http://localhost:1337/socket.io/socket.io.js"></script>
+    <!-- il faut égalemment importer le script qui se charge du traitement du côté client, i-e client.js-->
+    <script src="node_modules/socket.io/socket.io.js"></script>
+    <!-- template d'injection : handlebars(or mustache)-->
+    <script src="js/mustache.js" type="application/javascript"></script>
+    <script src="js/bootstrap.js" type="application/javascript"></script>
+    <script src="js/bootstrap.min.js" type="application/javascript"></script>
+    <!-- CSS imports-->
+    <link rel="stylesheet" href="frontend/css/34gs-queries.css">
+    <link rel="stylesheet"  href="frontend/css/34gs.css">
+    <link rel="stylesheet" href="frontend/css/bootstrap.css">
+    <link rel="stylesheet" href="frontend/css/bootstrap.min.css">
+    <link rel="stylesheet" href="frontend/css/bubbles.css">
+
+</head>
+<body>
+
+
+<table style="width: 100%;">
+    <tbody>
+        <tr>
+            <td width="50%">                
+                <ul class="items">
+                    <li>3721. hello my name is Megan</li>
+                </ul>
+            </td>
+            <td width="50%">
+                <h4>Send message</h4>
+                <form method="POST" id="send-message">
+                    <input name="message" rows="10" style="width: 100%;" placeholder="Enter message and hit Enter" />
+                </form>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Scripts JS : include the client side script -->
+<script src="client.js" type="application/javascript"></script>
+</body>
+</html>
