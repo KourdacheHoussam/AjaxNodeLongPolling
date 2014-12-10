@@ -15,7 +15,7 @@
 
 jQuery( function(){
 	var mode_communication;
-
+	var list_messages=[];
 	// Form d'envoi de message
 	// quand le formulaire est envoyé
 	$('#send-message').submit( function(){
@@ -33,17 +33,17 @@ jQuery( function(){
 			data: 'message=' + message, //specifie les données à envoyer au serveur
 			dataType: 'json',			//le type de données attendue par le serveur, ici c du json			
         	//success est la méthode à faire tourner quand la requete aboutit
-			success: function(result, status, xhr){
-				if( status == 'error' ){
-					alert('Error!');
-				} else if( status == 'empty-message' ){
-					alert('Enter a message!');
-				} else if( status == 'success' ){
-					$('#send-message input[name=message]').val('');
-				}
+			success: function(data, status, xhr){
+				if(status="success"){
+					var msg='';
+					//var obj=$.parse(data);
+					list_messages=JSON.stringify(data);
+					//alert("msg "+list_messages.toString());
+					//$('#message-sent').append("Voutre message est envoyé");
+				}				    
 			},
 			error:function(xhr, status){
-				alert(status);
+				alert("il y a une error");
 			}
 			// la méthode à appeler quand la requete est finie: quand on a reçu le callback success ou error.
 			//complete:
@@ -64,16 +64,32 @@ jQuery( function(){
 			type:'GET',
 			data:'modecommunication='+mode_communication,
 			dataType:'json',
-			success:function(result, status, xhr){
-				alert(result);
+			success: function(data, status, xhr){
+				if(status="success"){
+					var msg='';
+					clearInterval(time);
+					time=setTimeout( function(){
+						polling();
+					}, 5000 );
+					
+					list_messages=JSON.stringify(data);
+					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");
+				}else{
+					alert(':( Please refresh the page!');
+				}				    
 			},
 			error:function(error){
-				alert("ça merde");
+				clearInterval( time );
+				time = setTimeout( function(){
+						polling( );
+					}, 
+					15000 //on attend 15 scd
+				);
 			}, 			
 		});
 	};
 	// Appel à la fonction polling 
-	polling();
+	//polling();
 
 	/** -------------------------------------------------------------------------
 	----------------------------- LONG POLLING ----------------------------------
@@ -81,12 +97,9 @@ jQuery( function(){
 
 	// Start Long-polling for messages
 	// on crée une novuelle fonction javascript
-	function longpolling( timestamp, lastId ){
-		var t;
-
-		if( typeof lastId == 'undefined' ){
-			lastId = 0;
-		}
+	function longpolling(  ){
+		var time;
+		mode_communication = 'long-polling';
 			
 		//on envoie la requete vers le serveur dont le port est 1337:
 		//on lui passe en parametre un timestamp et un lastid		
@@ -94,35 +107,27 @@ jQuery( function(){
 
 			url: 'http://localhost:1337/',
 			type: 'GET',
-			data: 'timestamp=' + timestamp + '&lastId=' + lastId,
+			data: 'modecommunication='+ mode_communication,
 			dataType: 'json', 
 
 			//SUCESS et ERROR sont deux call back renvoyées par le serveur
-			success: function( data ){  //Au cas du succes on verifie si on a des resultats
+			success: function( data, status, xhr ){  //Au cas du succes on verifie si on a des resultats
 				
-				clearInterval( t );
+				clearInterval( time );
 
-				if( data.status == 'results' || data.status == 'no-results' ){
+				if( status == 'success' ){
 					
+					var msg='';
+					list_messages=JSON.stringify(data);
+					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");
+
 					// quand on reçoit des données, on refait une nouvelle requete 
 					// aprés une seconde, en appelant
 					// la fonction longpolling
-					t=setTimeout( function(){
-						longpolling( data.timestamp, data.lastId );
+					time=setTimeout( function(){
+						longpolling( );
 					}, 1000 );
 					
-					//on parcours les messages
-					if( data.status == 'results' ){
-						//pour chaque données du tableau data	
-						jQuery.each( data.data, function(i,msg){
-							if( jQuery('.no-items').size() == 1 ){
-								jQuery('.items').empty();
-							}
-							if( jQuery('#' + msg.id).size() == 0 ){
-								jQuery('.items').prepend( '<li id="' + msg.id + '">' + msg.id + '. ' + msg.message + '</li>' );
-							}
-						});
-					}
 				} 
 				else if( data.status == 'error' ){
 					alert('We got confused, Please refresh the page!');
@@ -135,12 +140,12 @@ jQuery( function(){
 			error: function(){
 				clearInterval( t );
 				t = setTimeout( function(){
-					    longpolling( data.timestamp, data.lastId );
+					    longpolling( );
 					}, 
 					15000 //15 secondes
 				);
 			}
 		});
 	}
-	//longpolling( '1418136219' );
+	longpolling( );
 }); 

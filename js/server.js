@@ -46,11 +46,36 @@ app.get('/', function(req, rep){
 	
 	/**----------------- IF IS POLLING MODE -------------------*/
 
+	if(mode_communication=='polling'){
+		rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
+		rep.write(JSON.stringify(list_messages)); //faut absolument le garder pour que ça marche
+		rep.end();
+	}
+
+	/**----------------- IF IS LONG-POLLING MODE -------------------*/
+
+	if(mode_communication=='long-polling'){
+
+		//attente de meassges
+		function attente() {
+			var time;
+			clearInterval( time );
+			time = setTimeout( function(){
+				if (list_messages == null) {
+					attente();
+				}
+				else {
+					rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
+					rep.write(JSON.stringify(list_messages)); //faut absolument le garder pour que ça marche
+					rep.end();
+				}
+			}, 1000 //on attend 1 scd
+			);
+		}
+		attente();
+	}
+
 	
-   	rep.send(list_messages);
-   	//console.log(req);
-    
-    console.log(list_messages);
 
     
     
