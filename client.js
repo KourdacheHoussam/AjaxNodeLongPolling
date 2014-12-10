@@ -11,12 +11,71 @@
     var socket=io('http://localhost:3000/');
 })();*/
 
-
-
 jQuery( function(){
+	
 	var mode_communication;
 	var list_messages=[];
-	// Form d'envoi de message
+	var mode_actuel='';
+	var date_connection=new Date();
+	var date_hour=date_connection.getHours();
+	var date_minutes=date_connection.getMinutes();
+	var date_seconds=date_connection.getSeconds();
+
+	// fonction pour prévenir le serveur du choix de mode de COM
+	function chooseModeCommunication(mode){
+		$.ajax({
+			url:'http://localhost:1337/choosemode/',
+			type:'GET',
+			data: 'modecommunication=' + mode,
+			dataType:'json',
+			complete: function(data, status, xhr){ //recevoir une confirmation du serveur
+				//si c bon, on coche la case du mode choisi sur l'IHM				
+				// on démarre le long polling()
+				alert("La communication avec ce mode est établie");
+				mode_actuel=JSON.stringify(data);
+
+				alert("Mode actuel =" +mode_actuel);
+			},
+			fail: function(xhr, status){
+				alert("La communication avec ce mode n'est pas établie");
+			}
+		});
+		
+	};
+
+
+	//fonction pour envoyer un nouveau message
+	function sendNewMessage(message){
+		$.ajax({		// la méthode ajax() est utilisé pour effectuer une requête réseau asynchrone.
+			url: 'http://localhost:1337/addmessage/',	// l'url vers laquelle j'envoie ma requete
+			type: 'GET',				// specifie le type de requete GET ou POST
+			data: 'message=' + message, //specifie les données à envoyer au serveur
+			dataType: 'json',			//le type de données attendue par le serveur, ici c du json			
+        	//success est la méthode à faire tourner quand la requete aboutit
+			complete: function(data, status, xhr){
+				if(status="success"){
+					var msg='';
+					//var obj=$.parse(data);
+					list_messages=JSON.stringify(data);
+				}				    
+			},
+			fail:function(xhr, status){
+				alert("il y a une error");
+			}
+			// la méthode à appeler quand la requete est finie: quand on a reçu le callback success ou error.
+			//complete:
+		});
+		return false; //empecher le rafraichissement
+	};
+
+	//Quand on choisit un mode
+	$('#choix-mode').submit( function(){
+		// on récupère le contenu de l'input
+		var mode = $('#choix-mode input[name=mode]').val();
+		chooseModeCommunication(mode);
+		return false;//empecher le rafraichissement
+	});
+
 	// quand le formulaire est envoyé
 	$('#send-message').submit( function(){
 		// on récupère le contenu de l'input
@@ -26,43 +85,23 @@ jQuery( function(){
 			window.alert('Enter a message!');
 			return false;
 		}
-		// la méthode ajax() est utilisé pour effectuer une requête réseau asynchrone.
-		$.ajax({
-			url: 'http://localhost:1337/',	// l'url vers laquelle j'envoie ma requete
-			type: 'GET',				// specifie le type de requete GET ou POST
-			data: 'message=' + message, //specifie les données à envoyer au serveur
-			dataType: 'json',			//le type de données attendue par le serveur, ici c du json			
-        	//success est la méthode à faire tourner quand la requete aboutit
-			success: function(data, status, xhr){
-				if(status="success"){
-					var msg='';
-					//var obj=$.parse(data);
-					list_messages=JSON.stringify(data);
-					//alert("msg "+list_messages.toString());
-					//$('#message-sent').append("Voutre message est envoyé");
-				}				    
-			},
-			error:function(xhr, status){
-				alert("il y a une error");
-			}
-			// la méthode à appeler quand la requete est finie: quand on a reçu le callback success ou error.
-			//complete:
-		});
-		return false;
+		sendNewMessage(message);//send it	
+		return false;//empecher le rafraichissement	
 	});
 
 
-	/** -------------------------------------------------------------------------
-	----------------------------- LONG POLLING ----------------------------------
-	-----------------------------------------------------------------------------*/
+	/** ----------------------------------------------------------------------------------------------------------------
+	--------------------------------------------------------------------  POLLING --------------------------------------
+	--------------------------------------------------------------------------------------------------------------------*/
 
 	function polling(){
 		var time;
 		mode_communication="polling";
+		alert('Lancement polling:' + mode_communication);
 		$.ajax({	
-			url:'http://localhost:1337/',
+			url:'http://localhost:1337/polling/',
 			type:'GET',
-			data:'modecommunication='+mode_communication,
+			data:'heure='+date_seconds,
 			dataType:'json',
 			success: function(data, status, xhr){
 				if(status="success"){
@@ -70,64 +109,58 @@ jQuery( function(){
 					clearInterval(time);
 					time=setTimeout( function(){
 						polling();
-					}, 5000 );
-					
+					}, 2000 );
 					list_messages=JSON.stringify(data);
+					alert(list_messages.toString());
 					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");
 				}else{
 					alert(':( Please refresh the page!');
-				}				    
+				}			    
 			},
 			error:function(error){
 				clearInterval( time );
 				time = setTimeout( function(){
+					alert(':( Error!');
 						polling( );
-					}, 
-					15000 //on attend 15 scd
-				);
-			}, 			
+				}, 15000 );//on attend 15 scd
+			} 			
 		});
+		return false;
 	};
 	// Appel à la fonction polling 
-	//polling();
+	polling();
 
-	/** -------------------------------------------------------------------------
-	----------------------------- LONG POLLING ----------------------------------
-	-----------------------------------------------------------------------------*/
+	/** ----------------------------------------------------------------------------------------------------------------
+	-------------------------------------------------------------------- LONG POLLING ----------------------------------
+	--------------------------------------------------------------------------------------------------------------------*/
 
 	// Start Long-polling for messages
 	// on crée une novuelle fonction javascript
-	function longpolling(  ){
+	function longPolling(  ){
 		var time;
 		mode_communication = 'long-polling';
-			
+		
+		
 		//on envoie la requete vers le serveur dont le port est 1337:
 		//on lui passe en parametre un timestamp et un lastid		
 		jQuery.ajax({
-
-			url: 'http://localhost:1337/',
+			url: 'http://localhost:1337/longpolling/',
 			type: 'GET',
-			data: 'modecommunication='+ mode_communication,
+			data: 'date='+date_seconds,
 			dataType: 'json', 
-
 			//SUCESS et ERROR sont deux call back renvoyées par le serveur
-			success: function( data, status, xhr ){  //Au cas du succes on verifie si on a des resultats
-				
+			success: function( data, status, xhr ){  //Au cas du succes on verifie si on a des resultats				
 				clearInterval( time );
-
-				if( status == 'success' ){
-					
+				if( status == 'success' ){					
 					var msg='';
 					list_messages=JSON.stringify(data);
 					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");
-
 					// quand on reçoit des données, on refait une nouvelle requete 
 					// aprés une seconde, en appelant
 					// la fonction longpolling
 					time=setTimeout( function(){
-						longpolling( );
-					}, 1000 );
-					
+						longPolling( );
+					}, 1000 );					
 				} 
 				else if( data.status == 'error' ){
 					alert('We got confused, Please refresh the page!');
@@ -136,16 +169,16 @@ jQuery( function(){
 			// Si la requete envoye renvoie une errer: exemple d'un serveur en panne
 			// ou pas de connexion internet.
 			// nous allons renvoyer une requete au bout de 15 seconde afin de laisse le temps au serveur de redemarrer
-
 			error: function(){
-				clearInterval( t );
-				t = setTimeout( function(){
-					    longpolling( );
-					}, 
-					15000 //15 secondes
-				);
+				clearInterval( time );
+				time = setTimeout( function(){
+					longPolling( );
+				}, 15000); //15 secondes
 			}
+			// quand la requete est complete
+			//complete:longPolling
 		});
+		return false;
 	}
-	longpolling( );
+	//longPolling();
 }); 

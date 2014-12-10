@@ -13,76 +13,191 @@ app=require('express')();
 util=require('util');
 url=require('url');
 var list_users={}; //user list container
-var list_messages=[]; //cache message
+var list_messages=["lol"]; //cache message
 var history_limit=30; //limit taille list_messages
 var date;
-
 /** Dans ce qui suit , on va créer un serveur, qui prends une fonction en paramètre
  * recevant la requête envoyée et la réponse à renvoyer à l'utilisateur*/
 http_server=require('http').Server(app);
-io=require('socket.io')(http_server);
 
+var clients_en_attente=[];
 /*-----------------------------------------------------------------------------*/
 
-app.get('/', function(req, rep){    
-    console.log("RequestReceived");	   
-    var path = url.parse(req.url).pathname;
 
-    console.log(req.query.message);
-    console.log("url original" +req.originalUrl);
+// Réception d'un nouveau message à enregistrer
+app.get('/addmessage', function(req, rep){
+	console.log("Je suis dans addmessage")
+	var msg=req.query.message;
+	 /** save message*/
+   	if(req.query.message != null){
+   		saveMessageDB(msg);
+   	}
 
+   	//now, on envoit le nouveau message à tous les clients
+   	while(clients_en_attente.length>0){
+   		var client=clients_en_attente.pop(); // on enleve de la liste
+   		client.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });
+   		client.end(JSON.stringify({			 // on lui envoie le message
+   			count:list_messages.length,
+   			append:req.query.message
+   		}));
+   	}
+   	rep.end();
 
-    /** ---------------- save messages -----------------------*/
-    date=new Date();
-    if(req.query.message != null){
-	    var currentmessage=new Object();
-	    currentmessage['message']=req.query.message;
-	    currentmessage['hour']=date.getHours();
-	    currentmessage['minutes']=date.getMinutes();
-	    //enregistrer dans le tableau
-	    list_messages.push(currentmessage);
+   	//prevenir le client du message reçu
+   	//sendMessages();
+   	//Methode envoyant des messages
+	function sendMessages(){
+		rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
+		rep.write(JSON.stringify(list_messages)); //faut absolument le garder pour que ça marche
+		rep.end();
 	}
+});
+
+
+
+// L'utilisateur demande de changer de mode de communication
+app.get('/choosemode', function(req, rep){		
+	console.log("Je suis dans choosemode");
+	if(req.query.modecommunication != null){
+		console.log(" mode :  "+ req.query.modecommunication);
+		switch(req.query.modecommunication ){
+			case "polling":
+				console.log("Mode polling choisi");
+				//prevenir le client que le mode est polling
+				//confirmMode("polling");
+				break;
+			case "long-polling":
+				console.log("Mode long-polling choisi");
+				//prevenir le client que le mode est long polling
+				//confirmMode("long-polling");
+				break;
+			case "push":
+				console.log("Mode push choisi");
+				//prvenir le client que le mode est push
+				//confirmMode("push");
+				break;
+		}
+	}
+	//confirmer à l'utilisateur le mode choisi
+	function confirmMode(mode){
+		console.log(mode);
+		rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
+		rep.write(JSON.stringify(mode)); //faut absolument le garder pour que ça marche
+		rep.end();
+	}
+});
+
+/** ------------------------------------------ LONG POLLING ---------------------------------------------*/
+
+app.get('/longpolling', function(req, rep){
+	//code long polling 	
+    //ar url_parts = url.parse(req.url); // parse URL
+	//var count=url_parts.pathname.replace(/[^0-9]*/, ''); //supprimer tout les cars, garder que les chiffres
+
+	//var date_h=req.query.date_h;
+	var date_m=req.query.date;
+	console.log("datem="+date_m);
+	//nouveau messages à envoyer
+	var new_messages=[];
+	//si le nombre de message que j'ai dans mon tableau list_message est sup à l'heure, j'envoie la data à l'user
+	if(list_messages.length>0){
+		for(message in list_messages){
+			if(message.minutes>date_m){
+				new_messages.push(message);			
+			}
+		}
+	}
+	console.log("la liste des nouveau messages "+new_messages.length);
+	
+	if(new_messages.length>0){
+		rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
+		rep.write(JSON.stringify(new_messages)); //faut absolument le garder pour que ça marche
+		rep.end();
+	}else{
+		clients_en_attente.push(rep);	//S'il n'y a pas de nouveau messages à envoyer au client, on l'enregistre juqu'a ce qu'il y en est de nouveaux
+		console.log("Client connecté à "+date_m +"  est en attente");
+	}
+	
+});
+
+
+/** ------------------------------------------ POLLING ---------------------------------------------*/
+
+app.get('/polling', function(req, rep){
+	console.log("je suis dans le polling a la seconde : " + req.query.heure);
+	var date_seconds=req.query.heure;
+	var new_messages=[];
+	consolo.log
+	if(list_messages.length>0){
+		for(message in list_messages){console.log("Lemessage:" + message);
+			if(message.seconds>date_seconds){
+				new_messages.push(message);
+			}
+		}
+	}
+
+	rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
+	rep.write(JSON.stringify(new_messages)); //faut absolument le garder pour que ça marche
+	rep.end();
+});
+
+// methode appelle avec l'url : localhost:1337/
+app.get('/', function(req, rep){      		
+	console.log("Je suis dans /") 
+    var path = url.parse(req.url).pathname;  
     var mode_communication=req.query.modecommunication;
 	
-	/**----------------- IF IS POLLING MODE -------------------*/
+	/**----------------- IF IS POLLING MODE -------------------
 
 	if(mode_communication=='polling'){
 		rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
 		rep.write(JSON.stringify(list_messages)); //faut absolument le garder pour que ça marche
 		rep.end();
-	}
+	}*/
 
 	/**----------------- IF IS LONG-POLLING MODE -------------------*/
+	/**
+	if(req.query.message != null || mode_communication=='long-polling'){
 
-	if(mode_communication=='long-polling'){
-
-		//attente de meassges
-		function attente() {
-			var time;
-			clearInterval( time );
-			time = setTimeout( function(){
+		//attente de messages
+		function attente(delai) {
+			
+			// on met le compteur à zéro
+			clearInterval( delai );
+			delai = setTimeout( function(){
 				if (list_messages == null) {
-					attente();
+					attente(delai);
 				}
 				else {
-					rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
-					rep.write(JSON.stringify(list_messages)); //faut absolument le garder pour que ça marche
-					rep.end();
+					sendMessages();
 				}
-			}, 1000 //on attend 1 scd
-			);
+			}, delai); //on attend 1 scd			
 		}
-		attente();
-	}
 
-	
-
-    
-    
+		if (list_messages == null) {
+			attente(1000);
+		}
+		else {
+			sendMessages();
+		}	
+	}*/
 });
 
 
-/** -----------------------------------------------------------------------------*/
+// enregistrer un message dans la liste de message
+function saveMessageDB(message){
+	date=new Date();
+    var currentmessage=new Object();
+	currentmessage['message']=message;
+	currentmessage['hour']=date.getHours();
+	currentmessage['minutes']=date.getMinutes();
+	currentmessage['seconds']=date.getSeconds();
+	//enregistrer dans le tableau
+	list_messages.push(currentmessage);		
+	console.log("message saved : "+currentmessage.message);
+};
+
 
 /** ecoute des sockets sur le port 3000 du serveur */
 
