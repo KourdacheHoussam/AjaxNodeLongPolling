@@ -103,13 +103,13 @@ jQuery( function(){
 			dataType:'json',
 			success: function(data, status, xhr){
 				clearInterval(time);
-				if(status="success"){
+				if(status="success"){		
 					var msg='';					
 					list_messages=JSON.stringify(data);					
-					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");					
+					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");								
 					time=setTimeout( function(){
 						polling();
-					}, 2000 );  // redemarre le polling au bout de 2 sec
+					}, 2000 );  // redemarre le polling au bout de 2 sec					
 				}else{
 					alert(':( Please refresh the page!');
 				}			    
@@ -124,7 +124,7 @@ jQuery( function(){
 		return false;
 	};
 	// Appel à la fonction polling 
-	//polling();
+	 	polling();
 
 	/** ----------------------------------------------------------------------------------------------------------------
 	-------------------------------------------------------- LONG POLLING ----------------------------------------------
@@ -142,21 +142,21 @@ jQuery( function(){
 			data: { heure: date_hour, minutes:date_minutes, secondes:date_seconds },
 			dataType: 'json', 
 			//SUCESS et ERROR sont deux call back renvoyées par le serveur
-			success: function( data, status, xhr ){  //Au cas du succes on verifie si on a des resultats				
+			success: function( datalong, status, xhr ){  //Au cas du succes on verifie si on a des resultats				
 				clearInterval( time );
-				if( status == 'success' ){					
+				if( status == 'success' ){										
 					
+					list_messages=JSON.stringify(datalong);
+					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");	
 					// quand on reçoit des données, on refait une nouvelle requete 
 					// aprés une seconde, en appelant
 					// la fonction longpolling
 					time=setTimeout( function(){
 						longPolling( );
-					}, 1000 );
-					var msg='';
-					list_messages=JSON.stringify(data);
-					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");					
+					}, 50 );
+					var msg='';				
 				} 
-				else if( data.status == 'error' ){
+				else if( datalong.status == 'error' ){
 					alert('We got confused, Please refresh the page!');
 				}
 			},
@@ -174,5 +174,5 @@ jQuery( function(){
 		});
 		return false;
 	}
-	longPolling();
+	//longPolling();
 }); 

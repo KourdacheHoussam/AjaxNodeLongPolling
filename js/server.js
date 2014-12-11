@@ -39,8 +39,8 @@ app.get('/addmessage', function(req, rep){
    		var client=clients_en_attente.pop(); // on enleve de la liste
    		client.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });
    		client.end(JSON.stringify({			 // on lui envoie le message
-   			count:list_messages.length,
-   			append:req.query.message
+   			user:"user",
+   			message:msg
    		}));
    	}
  	rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
