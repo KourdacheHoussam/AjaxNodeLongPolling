@@ -95,40 +95,36 @@ jQuery( function(){
 	--------------------------------------------------------------------------------------------------------------------*/
 
 	function polling(){
-		var time;
-		mode_communication="polling";
-		alert('Lancement polling:' + mode_communication);
+		var time;	
 		$.ajax({	
 			url:'http://localhost:1337/polling/',
 			type:'GET',
-			data:'heure='+date_seconds,
+			data: { heure: date_hour, minutes:date_minutes, secondes:date_seconds },
 			dataType:'json',
 			success: function(data, status, xhr){
+				clearInterval(time);
 				if(status="success"){
-					var msg='';
-					clearInterval(time);
+					var msg='';					
+					list_messages=JSON.stringify(data);					
+					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");					
 					time=setTimeout( function(){
 						polling();
-					}, 2000 );
-					list_messages=JSON.stringify(data);
-					alert(list_messages.toString());
-					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");
+					}, 2000 );  // redemarre le polling au bout de 2 sec
 				}else{
 					alert(':( Please refresh the page!');
 				}			    
 			},
-			error:function(error){
+			error:function(){
 				clearInterval( time );
-				time = setTimeout( function(){
-					alert(':( Error!');
-						polling( );
-				}, 15000 );//on attend 15 scd
+				time = setTimeout( function(){					
+					polling( );
+				}, 19000 );//on attend 15 scd
 			} 			
 		});
 		return false;
 	};
 	// Appel à la fonction polling 
-	polling();
+	//polling();
 
 	/** ----------------------------------------------------------------------------------------------------------------
 	-------------------------------------------------------------------- LONG POLLING ----------------------------------
@@ -137,30 +133,28 @@ jQuery( function(){
 	// Start Long-polling for messages
 	// on crée une novuelle fonction javascript
 	function longPolling(  ){
-		var time;
-		mode_communication = 'long-polling';
-		
-		
+		var time;		
 		//on envoie la requete vers le serveur dont le port est 1337:
 		//on lui passe en parametre un timestamp et un lastid		
 		jQuery.ajax({
 			url: 'http://localhost:1337/longpolling/',
 			type: 'GET',
-			data: 'date='+date_seconds,
+			data: { heure: date_hour, minutes:date_minutes, secondes:date_seconds },
 			dataType: 'json', 
 			//SUCESS et ERROR sont deux call back renvoyées par le serveur
 			success: function( data, status, xhr ){  //Au cas du succes on verifie si on a des resultats				
 				clearInterval( time );
 				if( status == 'success' ){					
-					var msg='';
-					list_messages=JSON.stringify(data);
-					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");
+					
 					// quand on reçoit des données, on refait une nouvelle requete 
 					// aprés une seconde, en appelant
 					// la fonction longpolling
 					time=setTimeout( function(){
 						longPolling( );
-					}, 1000 );					
+					}, 1000 );
+					var msg='';
+					list_messages=JSON.stringify(data);
+					$('#message-sent').append("<p>Votre message est reçu: contenu  " + list_messages.toString()+"</p>");					
 				} 
 				else if( data.status == 'error' ){
 					alert('We got confused, Please refresh the page!');
@@ -180,5 +174,5 @@ jQuery( function(){
 		});
 		return false;
 	}
-	//longPolling();
+	longPolling();
 }); 

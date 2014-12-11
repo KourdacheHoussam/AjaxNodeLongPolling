@@ -6,14 +6,15 @@
  //Variables globales stockés sur le serveur js utilisables par tous les clients
 var port=1337;
 var md5 = require('md5');
-var io, app, http_server, path, express, util, url, date;
+var io, app, http_server, path, express, util, url, date, queryString ;
 express=require('express');
 path=require('path');
 app=require('express')();
 util=require('util');
 url=require('url');
+queryString=require('querystring');
 var list_users={}; //user list container
-var list_messages=["lol"]; //cache message
+var list_messages=[]; //cache message
 var history_limit=30; //limit taille list_messages
 var date;
 /** Dans ce qui suit , on va créer un serveur, qui prends une fonction en paramètre
@@ -42,16 +43,9 @@ app.get('/addmessage', function(req, rep){
    			append:req.query.message
    		}));
    	}
-   	rep.end();
-
-   	//prevenir le client du message reçu
-   	//sendMessages();
-   	//Methode envoyant des messages
-	function sendMessages(){
-		rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
-		rep.write(JSON.stringify(list_messages)); //faut absolument le garder pour que ça marche
-		rep.end();
-	}
+ 	rep.writeHead(200, {'Content-Type': 'application/json', "Access-Control-Allow-Origin":"*" });	
+	rep.write(JSON.stringify(msg)); //faut absolument le garder pour que ça marche
+	rep.end();	
 });
 
 
@@ -92,19 +86,23 @@ app.get('/choosemode', function(req, rep){
 
 app.get('/longpolling', function(req, rep){
 	//code long polling 	
-    //ar url_parts = url.parse(req.url); // parse URL
-	//var count=url_parts.pathname.replace(/[^0-9]*/, ''); //supprimer tout les cars, garder que les chiffres
-
-	//var date_h=req.query.date_h;
-	var date_m=req.query.date;
-	console.log("datem="+date_m);
+    
+	//on récupere la date d'arrivee dans le chat
+	var objet= JSON.stringify(req.query);
+	var json=JSON.parse(objet);
+	var heure=json.heure;
+	var minutes=json.minutes;
+	var secondes=json.secondes;
+	console.log("Heure : "+heure+" min: "+minutes + " sec: "+secondes);
 	//nouveau messages à envoyer
 	var new_messages=[];
 	//si le nombre de message que j'ai dans mon tableau list_message est sup à l'heure, j'envoie la data à l'user
 	if(list_messages.length>0){
-		for(message in list_messages){
-			if(message.minutes>date_m){
-				new_messages.push(message);			
+		for(var i=0; i<list_messages.length;i++){
+			console.log("le message -> : " +list_messages[i]["message"]);
+			//list_messages[i]["seconds"] > secondes || 
+			if(  list_messages[i]["hour"] > heure && list_messages[i]["minutes"] > minutes  ){
+				new_messages.push(list_messages[i]);	
 			}
 		}
 	}
@@ -116,7 +114,7 @@ app.get('/longpolling', function(req, rep){
 		rep.end();
 	}else{
 		clients_en_attente.push(rep);	//S'il n'y a pas de nouveau messages à envoyer au client, on l'enregistre juqu'a ce qu'il y en est de nouveaux
-		console.log("Client connecté à "+date_m +"  est en attente");
+		console.log("Client connecté à H: "+heure +" m: "+ minutes + "  est en attente");
 	}
 	
 });
@@ -125,14 +123,26 @@ app.get('/longpolling', function(req, rep){
 /** ------------------------------------------ POLLING ---------------------------------------------*/
 
 app.get('/polling', function(req, rep){
-	console.log("je suis dans le polling a la seconde : " + req.query.heure);
-	var date_seconds=req.query.heure;
-	var new_messages=[];
-	consolo.log
-	if(list_messages.length>0){
-		for(message in list_messages){console.log("Lemessage:" + message);
-			if(message.seconds>date_seconds){
-				new_messages.push(message);
+	console.log("je suis dans le polling a la seconde : ");
+	//on récupere la date d'arrivee dans le chat
+	var objet= JSON.stringify(req.query);
+	var json= JSON.parse(objet);
+	var heure= json.heure;
+	var minutes= json.minutes;
+	var secondes= json.secondes;
+	console.log("Heure : "+heure+" min: "+minutes + " sec: "+secondes);
+	// on crée un tableau pour enregistrer les nouveau messages par rapport à 
+	// l'utilisateur connecté
+	var new_messages = [];
+
+	//console.log(obj.heure+' '+obj.minutes+' '+obj.secondes);
+	console.log("La liste des messages avant le IF :"+ list_messages.length);
+	
+	if(list_messages.length > 0){	
+		for(var i=0; i<list_messages.length;i++){
+			console.log("le message -> : " +list_messages[i]["message"]);
+			if( list_messages[i]["seconds"] > secondes ||  list_messages[i]["hour"] > heure || list_messages[i]["minutes"] > minutes  ){
+				new_messages.push(list_messages[i]);	
 			}
 		}
 	}
@@ -195,7 +205,8 @@ function saveMessageDB(message){
 	currentmessage['seconds']=date.getSeconds();
 	//enregistrer dans le tableau
 	list_messages.push(currentmessage);		
-	console.log("message saved : "+currentmessage.message);
+	console.log(" *** Message saved : "+currentmessage.message);
+
 };
 
 
